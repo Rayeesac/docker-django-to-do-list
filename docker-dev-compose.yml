@@ -1,0 +1,61 @@
+version: "3"
+
+networks:
+    to-do-list-network:
+        external:
+            name: to-do-list-network
+
+services:
+
+    django:
+        container_name: django
+        build:
+            context: ./django
+        image: django
+        restart: always
+        volumes:
+            - ./django:/application
+        networks:
+            - to-do-list-network
+        ports:
+            - "8005:8005"
+        env_file:
+            - env/.django_env
+        stdin_open : true
+        tty : true
+        environment:
+            DJANGO_MANAGEPY_CMD: "off"
+            DJANGO_COMPILE: "off"
+        command: 
+            python manage.py runserver 0:8005
+    db:
+        container_name: to-do-postgres
+        image: postgres
+        restart: always
+        env_file:
+            - ./services/.db_parameter
+        environment:
+            - PGDATA=/var/lib/postgresql/data/pgdata
+        volumes: 
+            #run in alphabetical order
+            # - ./sql/docker_postgres_init.sql:/docker-entrypoint-initdb.d/docker_postgres_init.sql
+            # - ./sql/docker_postgres_user_init.sql:/docker-entrypoint-initdb.d/docker_postgres_user_inita.sql
+            # - ./sql/docker_postgres_user_init_grant.sh:/docker-entrypoint-initdb.d/docker_postgres_user_initgrant.sh
+            # - ./sql/docker_postgres_project_init.sql:/docker-entrypoint-initdb.d/docker_postgres_user_initproject.sql
+            - ./services/postgresql.conf:/etc/postgresql/postgresql.conf
+            - ./pgdata:/var/lib/postgresql/data
+        command: 
+            postgres -c config_file=/etc/postgresql/postgresql.conf
+        networks:
+            - to-do-list-network
+
+    adminer:
+        image: adminer:4.7.6-standalone
+        restart: always
+        depends_on:
+            - db
+        container_name: adminer
+        networks:
+            - to-do-list-network
+        ports:
+            - "8080:8080"
